@@ -26,8 +26,8 @@ namespace openlcb
 /// - the Simple Node Ident Info Protocol will return this data
 /// - the ACDI memory space will contain this data.
 extern const SimpleNodeStaticValues SNIP_STATIC_DATA = {
-    4,               "bracz", "Logic board with Nucleo F303RE",
-    "Rev A", "1.00"};
+    4,               "bracz+rlull", "Logic on Nucleo F303RE+external flash",
+    "Rev A", "0.80"};
 
 #define NUM_INPUTS 1
 #define NUM_EXTBOARDS 0
@@ -44,19 +44,21 @@ using Ext0PC = RepeatedGroup<PCConfig, 32>;
 /// after an update.
 static constexpr uint16_t CANONICAL_VERSION = 0x2178;
 
-CDI_GROUP(NucleoGroup, Name("Nucleo peripherals"), Description("These are physically located on the nucleo CPU daughterboard."));
-CDI_GROUP_ENTRY(green_led, ConsumerConfig, Name("Nucleo user LED"), Description("Green led (LD2)."));
-CDI_GROUP_ENTRY(user_btn, ProducerConfig, Name("USER button"), Description("Button with blue cap."));
-CDI_GROUP_END();
-
 /// Defines the main segment in the configuration CDI. This is laid out at
 /// origin 128 to give space for the ACDI user data at the beginning.
 CDI_GROUP(IoBoardSegment, Segment(MemoryConfigDefs::SPACE_CONFIG), Offset(128));
 /// Each entry declares the name of the current entry, then the type and then
 /// optional arguments list.
 CDI_GROUP_ENTRY(internal_config, InternalConfigData);
+
+CDI_GROUP(NucleoGroup, Name("Nucleo peripherals"), Description("These are physically located on the nucleo CPU daughterboard."));
+CDI_GROUP_ENTRY(green_led, ConsumerConfig, Name("Nucleo user LED"), Description("Green led (LD2)."));
+CDI_GROUP_ENTRY(user_btn, ProducerConfig, Name("USER button"), Description("Button with blue cap."));
+CDI_GROUP_END();
+
 CDI_GROUP_ENTRY(nucleo_onboard, NucleoGroup);
 CDI_GROUP_ENTRY(logic, logic::LogicConfig, Name("Logic"), Description("Configures logic blocks. Make sure you use 'Update Complete' after changing the logic code or configuration."));
+
 #if NUM_EXTBOARDS > 0
 CDI_GROUP_ENTRY(ext0_pc, Ext0PC, Name("Expansion board 0 lines"),
     Description("Line 1-8 is port Even/A, Line 9-16 is port Even/B, Line 17-24 "

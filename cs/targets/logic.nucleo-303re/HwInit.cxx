@@ -63,8 +63,8 @@ const char *STDOUT_DEVICE = "/dev/ser0";
 /** override stderr */
 const char *STDERR_DEVICE = "/dev/ser0";
 
-/** UART 0 serial driver instance */
-static Stm32Uart uart0("/dev/ser0", USART2, USART2_IRQn);
+/** UART 2 serial driver instance */
+static Stm32Uart uart2("/dev/ser0", USART2, USART2_IRQn);
 
 /** CAN 0 CAN driver instance */
 static Stm32Can can0("/dev/can0");
@@ -119,9 +119,22 @@ static void spi1_ext_cs_deassert() {
     EXT_CS_Pin::set(true);
 }
 
-/// SPI1 driver for the expansion port.
+/// SPI1 driver for FLASH1
 static Stm32SPI spi1_1("/dev/spi1.ext", SPI1, SPI1_IRQn, &spi1_ext_cs_assert,
     &spi1_ext_cs_deassert, &spi1_lock);
+
+static void spi1_2_ext_cs_assert() {
+    EXT_LAT_Pin::set(false);
+}
+
+static void spi1_2_ext_cs_deassert() {
+    EXT_LAT_Pin::set(true);
+}
+
+/// SPI1 driver for FLASH2
+static Stm32SPI spi1_2("/dev/spi12.ext", SPI1, SPI1_IRQn, &spi1_2_ext_cs_assert,
+    &spi1_2_ext_cs_deassert, &spi1_lock);
+
 
 /// SPI2 driver for the onboard input ports.
 static Stm32SPI spi2("/dev/spi2", SPI2, SPI2_IRQn, &noop_cs, &noop_cs, nullptr);
@@ -304,7 +317,7 @@ void hw_preinit(void)
     gpio_init.Pin = GPIO_PIN_9;
     HAL_GPIO_Init(GPIOB, &gpio_init);
 
-    /* SPI1 pinmux on PB3, PB4, and PB5 */
+    /* SPI1 pinmux on PB3, PB4 and PB5 */
     gpio_init.Mode = GPIO_MODE_AF_PP;
     gpio_init.Pull = GPIO_NOPULL;
     gpio_init.Speed = GPIO_SPEED_FREQ_HIGH;
@@ -316,7 +329,7 @@ void hw_preinit(void)
     gpio_init.Pin = GPIO_PIN_5;
     HAL_GPIO_Init(GPIOB, &gpio_init);
 
-    /* SPI2 pinmux on PB13 (SCK), and PB14 (MISO2) */
+    /* SPI2 pinmux on PB13 (SCK2), and PB14 (MISO2) */
     gpio_init.Mode = GPIO_MODE_AF_PP;
     gpio_init.Pull = GPIO_NOPULL;
     gpio_init.Speed = GPIO_SPEED_FREQ_HIGH;
@@ -378,18 +391,36 @@ void hw_preinit(void)
 
 void usart2_interrupt_handler(void)
 {
-    uart0.interrupt_handler();
+    uart2.interrupt_handler();
 }
+
 
 /** Initialize the processor hardware post platform init.
  */
 void hw_postinit(void)
 {
+
+	spiFlash.init("/dev/spi12.ext");
 	spiFlash.init("/dev/spi1.ext");
 	char id[3];
 	spiFlash.get_id(id);
 	LOG(ALWAYS, "spiflash id %02x:%02x:%02x", id[0],id[1],id[2]);
 	spiffs0.mount("/ffs");
+	// we need to test to see if this flash has ever been used. If it has the /ffs/eeprom file, 
+	// we will assume it does not need to be erased. 
+	// TODO
+	// This is also used if the user is commanding a factory reset
+	// by pushing an IO / shorting a jumper on startup that we will test for
+	//
+	/*
+	fd_ = spiffs0.open("eeprom");
+	if  fd_ {
+	} else {
+		spiffs0.unmount();
+		spiffs0.format();
+		spiffs0.mount("/ffs");
+	}
+	*/
 }
  
 }

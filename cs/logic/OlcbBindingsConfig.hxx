@@ -66,7 +66,7 @@ CDI_GROUP_ENTRY(imports, ReptImports, Name("Imported variables for the logic blo
 // Program text size to 2000 seems to work correctly
 // additional testing will be done
 // was 1500
-CDI_GROUP_ENTRY(text, openlcb::StringConfigEntry<2000>,
+CDI_GROUP_ENTRY(text, openlcb::StringConfigEntry<1900>,
                 Name("Program text."));
 CDI_GROUP_ENTRY(status, openlcb::StringConfigEntry<256>,
                 Name("Status of program."));
@@ -83,7 +83,7 @@ CDI_GROUP_END();
 
 // currently, only 8 blocks. We will want to bump this to 16, 24 or 32
 // if possible
-using ReptBlock = openlcb::RepeatedGroup<LogicBlock, 8>;
+using ReptBlock = openlcb::RepeatedGroup<LogicBlock, 16>;
 
 CDI_GROUP(LogicConfig);
 CDI_GROUP_ENTRY(blocks, ReptBlock, RepName("Block"));
