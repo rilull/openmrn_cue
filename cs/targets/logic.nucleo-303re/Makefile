@@ -1,4 +1,4 @@
-DEFAULT_ADDRESS=0x71
+DEFAULT_ADDRESS=0x7E
 export TARGET:=freertos.armv7m.exc
 export BOARD:=BOARD_NUCLEO_IO
 export EXECUTABLE:=logic
