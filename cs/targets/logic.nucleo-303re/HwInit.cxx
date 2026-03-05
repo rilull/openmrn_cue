@@ -52,6 +52,7 @@
 #include "hardware.hxx"
 
 #include "SPIFlash.hxx"
+#include "SPIFRAM.hxx"
 #include "freertos_drivers/spiffs/SpiSPIFFS.hxx"
 
 /** override stdin */
@@ -79,6 +80,18 @@ static const SPIFlashConfig spiFlashCfg = {
 OSMutex spiFlashMutex;
 
 SPIFlash spiFlash(&spiFlashCfg, &spiFlashMutex);
+
+/// FRAM configuration. FM25xxx and MB85RSxxx parts use 20 MHz, SPI mode 0.
+/// Set addrBytes_ to 2 for devices up to 512 Kbit (64 KB), 3 for larger.
+static const SPIFRAMConfig spiFRAMCfg = {
+    .speedHz_ = 20000000,
+    .addrBytes_ = 2,
+};
+
+/// Mutex protecting multi-step FRAM operations (WREN + WRITE).
+OSMutex framMutex;
+
+SPIFRAM spiFram(&spiFRAMCfg, &framMutex);
 
 /** Call SPIFFS with settings of external flash. Will be initialized in main at end
  * Winbond W25Q16JV is a 16Mbit == 2097152 bit, organized in 8192 pages of 256 bytes
@@ -123,17 +136,17 @@ static void spi1_ext_cs_deassert() {
 static Stm32SPI spi1_1("/dev/spi1.ext", SPI1, SPI1_IRQn, &spi1_ext_cs_assert,
     &spi1_ext_cs_deassert, &spi1_lock);
 
-static void spi1_2_ext_cs_assert() {
-    EXT_LAT_Pin::set(false);
+static void spi1_fram_cs_assert() {
+    FRAM_CS_Pin::set(false);
 }
 
-static void spi1_2_ext_cs_deassert() {
-    EXT_LAT_Pin::set(true);
+static void spi1_fram_cs_deassert() {
+    FRAM_CS_Pin::set(true);
 }
 
-/// SPI1 driver for FLASH2
-static Stm32SPI spi1_2("/dev/spi12.ext", SPI1, SPI1_IRQn, &spi1_2_ext_cs_assert,
-    &spi1_2_ext_cs_deassert, &spi1_lock);
+/// SPI1 logical port for the FRAM chip (CS = FRAM_CS / PC11).
+static Stm32SPI spi1_fram("/dev/spi1.fram", SPI1, SPI1_IRQn,
+    &spi1_fram_cs_assert, &spi1_fram_cs_deassert, &spi1_lock);
 
 
 /// SPI2 driver for the onboard input ports.
@@ -400,12 +413,16 @@ void usart2_interrupt_handler(void)
 void hw_postinit(void)
 {
 
-	spiFlash.init("/dev/spi12.ext");
 	spiFlash.init("/dev/spi1.ext");
 	char id[3];
 	spiFlash.get_id(id);
-	LOG(ALWAYS, "spiflash id %02x:%02x:%02x", id[0],id[1],id[2]);
+	LOG(ALWAYS, "spiflash id %02x:%02x:%02x", id[0], id[1], id[2]);
 	spiffs0.mount("/ffs");
+
+	spiFram.init("/dev/spi1.fram");
+	char fram_id[3];
+	spiFram.get_id(fram_id);
+	LOG(ALWAYS, "FRAM id %02x:%02x:%02x", fram_id[0], fram_id[1], fram_id[2]);
 	// we need to test to see if this flash has ever been used. If it has the /ffs/eeprom file, 
 	// we will assume it does not need to be erased. 
 	// TODO
